@@ -1,0 +1,13 @@
+TWI_Slave Heizung_56_83
+
+4.12.10
+timer1 anstatt timer2 fuer Impulsdauer
+
+Startroutinen off
+
+29.10.10: Takt/256 fuer Timer Servo
+
+
+22.8.09 l 813:  txbuffer[BRENNER]= ~(PINB & (1<< BRENNERPIN)); auskommentiert
+
+20.10.10:	4 MHz Takt in Makefile
