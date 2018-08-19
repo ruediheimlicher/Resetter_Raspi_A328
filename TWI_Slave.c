@@ -41,7 +41,7 @@
 
 
 #define DELTA                 0x28   // 10s: Fehlercounter: Zeit bis Reset ausgeloest wird
-#define RESETFAKTOR           1       // Vielfaches von DELTA
+#define RESETFAKTOR           3       // Vielfaches von DELTA
 
 #define SHUTDOWNFAKTOR        3     //faktor fuer shutdown des Raspi
 #define KILLFAKTOR            1     //faktor fuer Zeit bis zum Ausschalten
@@ -276,15 +276,18 @@ void main (void)
       {    
          lcd_gotoxy(18,0);
          lcd_puthex(statusflag);
-         if (statusflag & (1<<FIRSTRUN)) 
+ //        if (statusflag & (1<<FIRSTRUN)) 
          {
             // firstrun: wenn Raspi noch off: keine Aktionen
             if (TWI_PIN & (1<<RASPISUPPLYPIN)) // Raspi ist ON
             {               
-               
+               lcd_gotoxy(12,1);
+               lcd_puts("R on ");
             }
             else // noch warten mit Aktionen
             {
+               lcd_gotoxy(12,1);
+               lcd_puts("R off");
                resetcount=0; // Kein Reset 
             }
          }
@@ -307,14 +310,17 @@ void main (void)
             //TWI_PORT ^=(1<<OSZIPIN);
             // 3 Impuldse zum Abschalten
             uint8_t i = 0;
-            lcd_gotoxy(0,0);
+            lcd_gotoxy(0,1);
             lcd_puts("3 Imp");
+            lcd_putint(RESETFAKTOR);
+            lcd_putc(' ');
+            lcd_putint(DELTA);
             for (i=0;i<3;i++)
             {
                TWI_PORT &= ~(1<<RELAISPIN);    // RELAISPIN LO, Reset fuer raspi
-               _delay_ms(100);
+               _delay_ms(200);
                TWI_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
-               _delay_ms(100);
+               _delay_ms(200);
             }
            
             statusflag |= (1<<WAIT);      // WAIT ist gesetzt, Ausgang wird von Raspi_HI nicht sofort wieder zurueckgesetzt
@@ -324,16 +330,14 @@ void main (void)
            
          if (statusflag & (1<<WAIT))
          {
-            lcd_gotoxy(0,2);
+            lcd_gotoxy(0,1);
             lcd_puts("wait");
 
             delaycount++; // Counter fuer Warten bis Raspi-shutdown, anschliessend ausschalten: Relasipin low fuer 5 sec 
             //TWI_PORT ^=(1<<OSZIPIN);
             if (delaycount > RESETDELAY) //Raspi ist down
             {
-               lcd_gotoxy(0,1);
-               lcd_puts(">Resdel");
-
+ 
                // TWI_PORT |=(1<<OSZIPIN);
               // statusflag &= ~0x1B ; // alle reset-Bits (3,4)
               statusflag &= ~0x3B ; 
@@ -342,26 +346,29 @@ void main (void)
                statusflag |= (1<<REBOOTWAIT); //  Warten auf Ausschalten
                resetcount =0; 
                rebootdelaycount = 0;
+               lcd_gotoxy(0,1);
+               lcd_puts("resdelay");
+
             }            
          }
          else if (statusflag & (1<<REBOOTWAIT)) // reboot-procedure beginnen
          {
             lcd_gotoxy(0,2);
-            lcd_puts("rebwait");
+            lcd_puts("rebootwait");
 
             rebootdelaycount++; // fortlaufend incrementieren, bestimmt ablauf
             if (rebootdelaycount == DELTA * SHUTDOWNFAKTOR) // Raspi ist down
             {
-               lcd_gotoxy(8,2);
-               lcd_puts(">shutoff");
+               lcd_gotoxy(12,2);
+               lcd_puts("shutoff");
 
                TWI_PORT &= ~(1<<RELAISPIN); // Ausschalten einleiten
             }
             
             if (rebootdelaycount == DELTA * (SHUTDOWNFAKTOR + KILLFAKTOR)) // Ausgeschaltet
             {
-               lcd_gotoxy(8,2);
-               lcd_puts(">restrt  ");
+               lcd_gotoxy(12,2);
+               lcd_puts("restart ");
              
                TWI_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
                _delay_ms(1000); // kurz warten
@@ -381,9 +388,9 @@ void main (void)
                restartcount++;
                if (restartcount > (DELTA*RESTARTFAKTOR))
                {
-                  lcd_gotoxy(16,2);
-                  lcd_puts("end");
-                  lcd_clr_line(0);
+                  lcd_gotoxy(12,2);
+                  lcd_puts("end     ");
+                  //lcd_clr_line(0);
                   lcd_clr_line(1);
                   lcd_clr_line(2);
                   
