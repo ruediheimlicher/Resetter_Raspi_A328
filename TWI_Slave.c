@@ -185,7 +185,7 @@ ISR(INT0_vect) // Potential-Aenderung von Raspi
 {
    //TWI_PORT ^=(1<<OSZIPIN);
    statusflag &= ~(1<<FIRSTRUN); // Flag resetten, Raspi list gestartet
-   if ((!((statusflag & (1<<WAIT)) )))// || (statusflag & (1<<REBOOTWAIT)) )))// WAIT verhindert, dass Relais von Raspi_HI nicht sofort wieder zurueckgesetzt wird
+   if ((!((statusflag & (1<<WAIT))  || (statusflag & (1<<REBOOTWAIT)) )))// WAIT verhindert, dass Relais von Raspi_HI nicht sofort wieder zurueckgesetzt wird
    {
       // counter zuruecksetzen, alles OK
       resetcount=0;
@@ -248,7 +248,7 @@ void main (void)
    sei();
    
    lcd_gotoxy(0,0);
-   lcd_puts("hallo");
+   lcd_puts("Raspi-Resetter");
    
    statusflag |= (1<<FIRSTRUN);
 #pragma mark while
@@ -302,7 +302,7 @@ void main (void)
          lcd_putint12(restartcount);
          
          
-         if ((resetcount > RESETFAKTOR * DELTA) && (!(statusflag & (1<<WAIT))) ) // && (!(statusflag & (1<<REBOOTWAIT))))     // Zeit erreicht, kein wait-status, kein reboot-status: Reboot-vorgang nicht unterbrechen 
+         if ((resetcount > RESETFAKTOR * DELTA) && (!(statusflag & (1<<WAIT)))   && (!(statusflag & (1<<REBOOTWAIT))))     // Zeit erreicht, kein wait-status, kein reboot-status: Reboot-vorgang nicht unterbrechen 
          {
             //TWI_PORT ^=(1<<OSZIPIN);
             // 3 Impuldse zum Abschalten
