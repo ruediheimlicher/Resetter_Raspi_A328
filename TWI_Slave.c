@@ -24,9 +24,9 @@
 //									*
 //***********************************
 
-#define TWI_PORT		PORTB
-#define TWI_PIN		PINB
-#define TWI_DDR		DDRB
+#define TWI_PORT		PORTD
+#define TWI_PIN		PIND
+#define TWI_DDR		DDRD
 
 
 #define LOOPLEDPIN            0        // Blink-LED
@@ -94,7 +94,7 @@ volatile uint16_t   firstruncount=0; // warten auf Raspi bei plugin
 void slaveinit(void)
 {
    
-   CLKPR |= (1<<CLKPS3); // attiny
+   TCCR0 |= (1<<CS02); // attiny
    
    TWI_DDR |= (1<<LOOPLEDPIN);
    TWI_DDR |= (1<<RELAISPIN);       // Ausgang: Schaltet Reset-Ausgang fuer Zeit RESETDELAY auf LO
@@ -151,11 +151,12 @@ void timer_init(void)
 	/* Set timer to CTC mode */
 	//TCCR0A = (1 << WGM01);
 	/* Set prescaler */
-	TCCR0B = (1 << CS00)|(1 << CS02); // clock/1024
+	TCCR0 = (1 << CS00)|(1 << CS02); // clock/1024
 	/* Set output compare register for 1ms ticks */
 	//OCR0A = (F_CPU / 8) / 1000;
 	/* Enable output compare A interrupts */
-	TIMSK0 = (1 << TOIE0); // TOV0 Overflow
+	TIMSK = (1 << TOIE0); // TOV0 Overflow
+   
 }
 
 
@@ -166,6 +167,7 @@ ISR(TIMER0_OVF_vect) // Aenderung an SDA
    //TWI_PORT ^= (1<<OSZIPIN);
 }
 
+/*
 ISR(PCINT0_vect) // Potential-Aenderung 
 {
    //TWI_PORT ^=(1<<OSZIPIN);
@@ -178,19 +180,18 @@ ISR(PCINT0_vect) // Potential-Aenderung
     }
 
 }
-
+*/
 ISR(INT0_vect) // Potential-Aenderung von Raspi
 {
-   //TWI_PORT |=(1<<OSZIPIN);
-   /*
-   if ((!(statusflag & (1<<WAIT))))// WAIT verhindert, dass Relais von Raspi_HI nicht sofort wieder zurueckgesetzt wird
+   //TWI_PORT ^=(1<<OSZIPIN);
+   statusflag &= ~(1<<FIRSTRUN); // Flag resetten, Raspi list gestartet
+   if ((!((statusflag & (1<<WAIT)) )))// || (statusflag & (1<<REBOOTWAIT)) )))// WAIT verhindert, dass Relais von Raspi_HI nicht sofort wieder zurueckgesetzt wird
    {
       // counter zuruecksetzen, alles OK
       resetcount=0;
-      Raspi_HI_counter=0;
-      Raspi_LO_counter=0;
+      
    }
-   */
+   
 }
 
 /*
@@ -234,13 +235,14 @@ void main (void)
    /* initialize the LCD */
    lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
 
-   MCUCR |= (1<<ISC01);
+   MCUCR |= (1<<ISC00); //Any logical change on INT0 generates an interrupt request.
+   GICR |= (1<<INT0);
 //   GIMSK |= (1<<INT0);
    
-    PCICR |= 1<<PCIE0;
-//  GIMSK |= 1<<PCIE;// attiny
+  //  PCICR |= 1<<PCIE0;
+  //GIMSK |= 1<<PCIE;// attiny
    
-    PCMSK0 |= 1<<PCINT2;
+ //   PCMSK0 |= 1<<PCINT2;
    //PCMSK |= 1<<PCINT2; // attiny
    timer_init();
    sei();
@@ -300,7 +302,7 @@ void main (void)
          lcd_putint12(restartcount);
          
          
-         if ((resetcount > RESETFAKTOR * DELTA) && (!(statusflag & (1<<WAIT))) && (!(statusflag & (1<<REBOOTWAIT))))     // Zeit erreicht, kein wait-status, kein reboot-status: Reboot-vorgang nicht unterbrechen 
+         if ((resetcount > RESETFAKTOR * DELTA) && (!(statusflag & (1<<WAIT))) ) // && (!(statusflag & (1<<REBOOTWAIT))))     // Zeit erreicht, kein wait-status, kein reboot-status: Reboot-vorgang nicht unterbrechen 
          {
             //TWI_PORT ^=(1<<OSZIPIN);
             // 3 Impuldse zum Abschalten
