@@ -184,7 +184,7 @@ ISR(PCINT0_vect) // Potential-Aenderung
 ISR(INT0_vect) // Potential-Aenderung von Raspi
 {
    //TWI_PORT ^=(1<<OSZIPIN);
-   statusflag &= ~(1<<FIRSTRUN); // Flag resetten, Raspi list gestartet
+   statusflag &= ~(1<<FIRSTRUN); // Flag resetten, Raspi ist gestartet
    if ((!((statusflag & (1<<WAIT))  || (statusflag & (1<<REBOOTWAIT)) )))// WAIT verhindert, dass Relais von Raspi_HI nicht sofort wieder zurueckgesetzt wird
    {
       // counter zuruecksetzen, alles OK
@@ -276,23 +276,28 @@ void main (void)
       {    
          lcd_gotoxy(18,0);
          lcd_puthex(statusflag);
-         if (statusflag & (1<<FIRSTRUN))  //  Beim Start warten auf Betriebsspannung
+         if (statusflag & (1<<FIRSTRUN))  //  Beim Start warten auf Takt vom Raspi (anstatt:Betriebsspannung)
          {
+            
             //lcd_gotoxy(12,2);
             //lcd_puts("firstrun");
             // firstrun: wenn Raspi noch off: keine Aktionen
+            resetcount=0; // Kein Reset 
+            /*
             if (TWI_PIN & (1<<RASPISUPPLYPIN)) // Raspi ist ON
             {               
                
-               lcd_gotoxy(12,1);
+               lcd_gotoxy(0,1);
                lcd_puts("R on ");
             }
             else // noch warten mit Aktionen
             {
-               lcd_gotoxy(12,1);
+               lcd_gotoxy(0,1);
                lcd_puts("R off");
                resetcount=0; // Kein Reset 
+            
             }
+             */
          }
          else if (TWI_PIN & (1<<RASPISUPPLYPIN)) // Raspi ist ON
          {
