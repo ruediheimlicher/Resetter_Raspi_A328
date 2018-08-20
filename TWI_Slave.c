@@ -276,11 +276,14 @@ void main (void)
       {    
          lcd_gotoxy(18,0);
          lcd_puthex(statusflag);
- //        if (statusflag & (1<<FIRSTRUN)) 
+         if (statusflag & (1<<FIRSTRUN))  //  Beim Start warten auf Betriebsspannung
          {
+            //lcd_gotoxy(12,2);
+            //lcd_puts("firstrun");
             // firstrun: wenn Raspi noch off: keine Aktionen
             if (TWI_PIN & (1<<RASPISUPPLYPIN)) // Raspi ist ON
             {               
+               
                lcd_gotoxy(12,1);
                lcd_puts("R on ");
             }
@@ -290,6 +293,10 @@ void main (void)
                lcd_puts("R off");
                resetcount=0; // Kein Reset 
             }
+         }
+         else if (TWI_PIN & (1<<RASPISUPPLYPIN)) // Raspi ist ON
+         {
+            
          }
          
          //TWI_PORT ^=(1<<OSZIPIN);
@@ -373,7 +380,7 @@ void main (void)
                TWI_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
                _delay_ms(1000); // kurz warten
                TWI_PORT &= ~(1<<RELAISPIN);    // RELAISPIN LO, Restart fuer raspi
-               _delay_ms(100);
+               _delay_ms(200);
                TWI_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
                statusflag |= (1<<RESTARTWAIT);
                restartcount=0; // counter fuer Restart-Zeit
