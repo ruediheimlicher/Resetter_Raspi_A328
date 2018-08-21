@@ -322,7 +322,7 @@ void main (void)
             //TWI_PORT ^=(1<<OSZIPIN);
             // 3 Impuldse zum Abschalten
             uint8_t i = 0;
-            lcd_gotoxy(0,1);
+            lcd_gotoxy(0,2);
             lcd_puts("3 Imp");
             lcd_putint(RESETFAKTOR);
             lcd_putc(' ');
@@ -342,7 +342,7 @@ void main (void)
            
          if (statusflag & (1<<WAIT))
          {
-            lcd_gotoxy(0,1);
+            lcd_gotoxy(0,2);
             lcd_puts("wait");
 
             delaycount++; // Counter fuer Warten bis Raspi-shutdown, anschliessend ausschalten: Relasipin low fuer 5 sec 
@@ -365,13 +365,14 @@ void main (void)
          }
          else if (statusflag & (1<<REBOOTWAIT)) // reboot-procedure beginnen
          {
-            lcd_gotoxy(0,2);
+            lcd_gotoxy(0,1);
             lcd_puts("rebootwait");
 
+        
             rebootdelaycount++; // fortlaufend incrementieren, bestimmt ablauf
             if (rebootdelaycount == DELTA * SHUTDOWNFAKTOR) // Raspi ist down
             {
-               lcd_gotoxy(12,2);
+               lcd_gotoxy(12,1);
                lcd_puts("shutoff");
 
                TWI_PORT &= ~(1<<RELAISPIN); // Ausschalten einleiten
@@ -379,7 +380,7 @@ void main (void)
             
             if (rebootdelaycount == DELTA * (SHUTDOWNFAKTOR + KILLFAKTOR)) // Ausgeschaltet
             {
-               lcd_gotoxy(12,2);
+               lcd_gotoxy(12,1);
                lcd_puts("restart ");
              
                TWI_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
@@ -400,7 +401,7 @@ void main (void)
                restartcount++;
                if (restartcount > (DELTA*RESTARTFAKTOR))
                {
-                  lcd_gotoxy(12,2);
+                  lcd_gotoxy(12,1);
                   lcd_puts("end     ");
                   //lcd_clr_line(0);
                   lcd_clr_line(1);
