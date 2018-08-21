@@ -299,15 +299,15 @@ void main (void)
             }
              */
          }
-         else if (TWI_PIN & (1<<RASPISUPPLYPIN)) // Raspi ist ON
+         else if (!(TWI_PIN & (1<<RASPISUPPLYPIN))) // Raspi ist OFF: sofort starten
          {
-            
+            statusflag |= (1<<REBOOTWAIT);
          }
          
          //TWI_PORT ^=(1<<OSZIPIN);
          statusflag &= ~(1<<CHECK);
          // resetcount wird bei Aenderungen am RaspiPIN  in ISR von INT0 zurueckgesetzt. (Normalbetrieb)
-         lcd_gotoxy(0,3);
+         lcd_gotoxy(16,1);
          lcd_putint12(resetcount);
          
          lcd_gotoxy(6,3);
@@ -342,7 +342,7 @@ void main (void)
            
          if (statusflag & (1<<WAIT))
          {
-            lcd_gotoxy(0,2);
+            lcd_gotoxy(0,1);
             lcd_puts("wait");
 
             delaycount++; // Counter fuer Warten bis Raspi-shutdown, anschliessend ausschalten: Relasipin low fuer 5 sec 
@@ -372,15 +372,15 @@ void main (void)
             rebootdelaycount++; // fortlaufend incrementieren, bestimmt ablauf
             if (rebootdelaycount == DELTA * SHUTDOWNFAKTOR) // Raspi ist down
             {
-               lcd_gotoxy(12,1);
-               lcd_puts("shutoff");
+               lcd_gotoxy(0,1);
+               lcd_puts("shut off");
 
                TWI_PORT &= ~(1<<RELAISPIN); // Ausschalten einleiten
             }
             
             if (rebootdelaycount == DELTA * (SHUTDOWNFAKTOR + KILLFAKTOR)) // Ausgeschaltet
             {
-               lcd_gotoxy(12,1);
+               lcd_gotoxy(0,1);
                lcd_puts("restart ");
              
                TWI_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
@@ -401,8 +401,8 @@ void main (void)
                restartcount++;
                if (restartcount > (DELTA*RESTARTFAKTOR))
                {
-                  lcd_gotoxy(12,1);
-                  lcd_puts("end     ");
+                  lcd_gotoxy(0,1);
+                  lcd_puts("end      ");
                   //lcd_clr_line(0);
                   lcd_clr_line(1);
                   lcd_clr_line(2);
