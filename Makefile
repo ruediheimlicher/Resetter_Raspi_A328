@@ -56,7 +56,7 @@ FORMAT = ihex
 
 
 # Target file name (without extension).
-TARGET = TWI_Slave
+TARGET = RESET_Slave
 
 
 # List C source files here. (C dependencies are automatically generated.)

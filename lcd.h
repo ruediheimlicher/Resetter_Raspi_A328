@@ -33,7 +33,7 @@
 #include <inttypes.h>
 
 /* AVR port and pins connected to '164 and/or LCD */
-#define LCD_PORT                PORTD
+#define LCD_PORT                PORTB
 
 //Slave
 
