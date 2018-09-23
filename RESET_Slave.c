@@ -139,7 +139,8 @@ void slaveinit(void)
    LCD_DDR |= (1<<LCD_ENABLE_PIN);   //Pin 5 von PORT B als Ausgang fuer LCD
    LCD_DDR |= (1<<LCD_CLOCK_PIN);   //Pin 6 von PORT B als Ausgang fuer LCD
    
-   
+   EIMSK |= (1<<INT0); // INT0 enabled
+   EICRA |= (1<<ISC00);//Any logical change on INT0 generates an interrupt request
 }
 
 
@@ -151,12 +152,12 @@ void timer_init(void)
 	/* Set timer to CTC mode */
 	//TCCR0A = (1 << WGM01);
 	/* Set prescaler */
-	TCCR0A = (1 << CS00)|(1 << CS02); // clock/1024
+	TCCR0B = (1 << CS00)|(1 << CS02); // clock/1024
 	/* Set output compare register for 1ms ticks */
 	//OCR0A = (F_CPU / 8) / 1000;
 	/* Enable output compare A interrupts */
 	TIMSK0 = (1 << TOIE0); // TOV0 Overflow
-   
+
 }
 
 
@@ -250,8 +251,7 @@ void main (void)
    /* initialize the LCD */
    lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
 
-   MCUCR |= (1<<ISC10); //Any logical change on INT0 generates an interrupt request.
-   EIMSK |= (1<<INT0);
+   
 //   GIMSK |= (1<<INT0);
    
   //  PCICR |= 1<<PCIE0;
@@ -483,6 +483,7 @@ void main (void)
          }
          else // Kein WAIT, kein REBOOTWAIT: resetcounter inkrementieren, Normalbetrieb
          {
+            wdt_reset();
             resetcount++;
          }
          //RESET_PORT ^=(1<<OSZIPIN);
