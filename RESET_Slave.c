@@ -24,12 +24,14 @@
 //									*
 //***********************************
 
-#define TEST 0
+#define TEST 1
 #define LOOPLED_PORT PORTB
 #define LOOPLED_DDR  DDRB
 #define LOOPLED_PIN  PINB
 #define LOOPLEDPIN            0        // Blink-LED
-#define TESTPIN               1
+
+#define WDRLEDPIN 1
+#define TESTPIN               2
 
 #define RESET_PORT		PORTD
 #define RESET_PIN		PIND
@@ -101,7 +103,9 @@ volatile uint16_t	restartcount=0; // counter fuer Restart-Zeit
 volatile uint16_t   firstruncount=0; // warten auf Raspi bei plugin
 
 volatile uint8_t   wdtcounter=0;
-
+volatile uint8_t   wdt_rep_counter=0;
+volatile uint8_t   wdt_isr_counter=0;
+volatile uint8_t wdr_count=0;
 void slaveinit(void)
 {
    
@@ -113,6 +117,8 @@ void slaveinit(void)
    LOOPLED_DDR &= ~(1<<TESTPIN);    // Eingang
    LOOPLED_PORT |= (1<<TESTPIN);     // HI
    
+   LOOPLED_DDR |= (1<<WDRLEDPIN);
+   LOOPLED_PORT |= (1<<WDRLEDPIN);
    
    RESET_DDR |= (1<<TASTEPIN);       // Ausgang: Schaltet Reset-Ausgang fuer Zeit RESETDELAY auf LO
    RESET_PORT |= (1<<TASTEPIN);     // HI	
@@ -131,7 +137,7 @@ void slaveinit(void)
    RESET_PORT &= ~(1<<RASPISYSTEMPIN);
    
    
-   RESET_DDR &= ~(1<<PB2);
+   //RESET_DDR &= ~(1<<PB2);
    
    
    //LCD
@@ -184,6 +190,7 @@ ISR(PCINT0_vect) // Potential-Aenderung
 */
 ISR(INT0_vect) // Potential-Aenderung von Raspi-Takt
 {
+   
    //RESET_PORT ^=(1<<OSZIPIN);
    statusflag &= ~(1<<FIRSTRUN); // Flag resetten, Raspi ist gestartet
    if ((!((statusflag & (1<<WAIT))  || (statusflag & (1<<REBOOTWAIT)) )))// WAIT verhindert, dass Relais von Raspi_HI nicht sofort wieder zurueckgesetzt wird
@@ -221,22 +228,44 @@ ISR (SPI_STC_vect) // Neue Zahl angekommen
 }
 */
 
-void WDT_Init(void)
+void WDT_Init(uint8_t status)
 {
-   cli();
-   MCUSR &= ~(1<<WDRF);
-   WDTCSR = (1<<WDCE) | (1<<WDE) ;
+   unsigned char reset_flags;
+   /* Read and clear reset flags */
+   reset_flags = MCUSR;                // Save reset flags.
    
-   wdt_enable(WDTO_2S);
+   cli();
+   wdt_reset();
+   MCUSR &= ~(1<<WDRF);
+   MCUSR       = 0;                    // Clear all flags previously set.
+   WDTCSR = (1<<WDCE) | (1<<WDE) ;
+   WDTCSR = (1<<WDP0)|(1<<WDP1)|(1<<WDP2); // 2s
+   WDTCSR |= (1<< WDIE); // muss nach wdt_enable stehen
+   
+   wdt_reset();
    sei();
 }
 
+
 ISR(WDT_vect)
 {
-   PORTB  &= ~(1<<TASTEPIN);
-}
-
-
+   
+   //RESET_PORT  ^= (1<<TASTEPIN);
+   wdt_isr_counter++;
+   for (uint8_t i=0;i<4;i++)
+   {
+      //LED ON
+      LOOPLED_PORT |= (1<<WDRLEDPIN);
+      //~0.1s delay
+      _delay_ms(20);
+      //LED OFF
+      LOOPLED_PORT &= ~(1<<WDRLEDPIN);
+      _delay_ms(80);
+   }
+   MCUSR &= ~(1<<WDRF);
+   WDTCSR=0;
+   WDTCSR   =   (1<<WDCE)|(1<<WDE ); // next WDR ohne WDIE, -> reset
+ }
 
 
 
@@ -245,61 +274,79 @@ void main (void)
    cli();
    wdt_disable();
 	MCUSR &= ~(1<<WDRF);
+   MCUSR       = 0;                    // Clear all flags previously set.
+   wdt_disable();
+   WDTCSR=0;
+   
 // *** 	wdt_reset();
 	slaveinit();
-   
+   wdt_reset();
    /* initialize the LCD */
    lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
 
-   
-//   GIMSK |= (1<<INT0);
-   
-  //  PCICR |= 1<<PCIE0;
-  //GIMSK |= 1<<PCIE;// attiny
-   
- //   PCMSK0 |= 1<<PCINT2;
-   //PCMSK |= 1<<PCINT2; // attiny
    timer_init();
    
    lcd_gotoxy(0,0);
    lcd_puts("Raspi-Resetter");
 
-   uint8_t i=0;
-   for (i=0;i<3;i++)
+   if (TEST) // Start nach reset anzeigen
    {
-      LOOPLED_PORT &=~(1<<LOOPLEDPIN);
-      _delay_ms(600);
-      LOOPLED_PORT |=(1<<LOOPLEDPIN);
-      _delay_ms(50);
-      wdt_reset();
+      uint8_t i=0;
+      for (i=0;i<3;i++)
+      {
+         LOOPLED_PORT &=~(1<<LOOPLEDPIN);
+         _delay_ms(600);
+         LOOPLED_PORT |=(1<<LOOPLEDPIN);
+         _delay_ms(50);
+         wdt_reset();
+      }
    }
+   MCUSR &= ~(1<<WDRF);
    
-   
-   WDT_Init();
-   sei();
+   //sei();
    
    lcd_gotoxy(15,0);
    lcd_puts("go");
 
    //_delay_ms(400);
-   
    statusflag |= (1<<FIRSTRUN);
+   //lcd_cls();
+   WDT_Init(1);
+    sei();
+
 #pragma mark while
 	while (1)
    {
+      
       if (TEST)
       {
-         while(!(LOOPLED_PIN & (1<<TESTPIN))) 
+         uint8_t i=0;
+         //wdt_reset();
+         if((LOOPLED_PIN & (1<<TESTPIN))) 
          {
-            _delay_ms(100);      
+            for (i=0;i<24;i++)
+            {
+               //wdt_reset();
+               _delay_ms(200);     
+               wdt_rep_counter++;
+               lcd_gotoxy(0,1);
+               lcd_puthex(wdt_rep_counter);
+               
+            }
+            //RESET_PORT |=(1<<TASTEPIN);
+            _delay_ms(100); 
+            //lcd_gotoxy(6,1);
+            //lcd_puthex(wdt_isr_counter);
          }
+         wdt_rep_counter=0;
+         
       }
       else 
       {
          wdtcounter=0;
          wdt_reset();
       }
-      
+      //RESET_PORT |=(1<<TASTEPIN);
       //Blinkanzeige
       loopcount0++;
       if (loopcount0>=0x00AF)
@@ -313,6 +360,9 @@ void main (void)
          {
             //RESET_PORT ^=(1<<LOOPLEDPIN);
             loopcount1=0;
+            //RESET_PORT  ^= (1<<TASTEPIN);
+            //_delay_ms(20);
+
          }         
       }
       
@@ -322,6 +372,8 @@ void main (void)
       {    
          lcd_gotoxy(18,0);
          lcd_puthex(statusflag);
+         lcd_gotoxy(6,1);
+         lcd_puthex(wdt_isr_counter);
          if (statusflag & (1<<FIRSTRUN))  //  Beim Start warten auf Takt vom Raspi (anstatt:Betriebsspannung)
          {
             
@@ -385,7 +437,7 @@ void main (void)
          lcd_gotoxy(12,3);
          lcd_putint12(restartcount);
          
-         wdt_reset();
+ //        wdt_reset();
          if ((resetcount > RESETFAKTOR * DELTA) && (!(statusflag & (1<<WAIT)))   && (!(statusflag & (1<<REBOOTWAIT))))     // Zeit erreicht, kein wait-status, kein reboot-status: Reboot-vorgang nicht unterbrechen 
          {
             //RESET_PORT ^=(1<<OSZIPIN);
