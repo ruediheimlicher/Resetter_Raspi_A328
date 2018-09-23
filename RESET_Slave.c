@@ -102,7 +102,7 @@ volatile uint16_t   firstruncount=0; // warten auf Raspi bei plugin
 void slaveinit(void)
 {
    
-   TCCR0 |= (1<<CS02); // attiny
+   TCCR0B |= (1<<CS02); // attiny
    
    LOOPLED_DDR |= (1<<LOOPLEDPIN);
    LOOPLED_PORT |= (1<<LOOPLEDPIN);     // HI
@@ -111,8 +111,9 @@ void slaveinit(void)
    LOOPLED_PORT |= (1<<TESTPIN);     // HI
    
    
-   RESET_DDR |= (1<<TASTEPIN);       // Ausgang: Schaltet Reset-Ausgang fuer Zeit RESETDELAY auf LO
-   RESET_PORT |= (1<<TASTEPIN);     // HI	
+   RESET_DDR |= (1<<RELAISPIN);       // Ausgang: Schaltet Reset-Ausgang fuer Zeit RESETDELAY auf LO
+   RESET_PORT |= (1<<RELAISPIN);     // HI	
+   //RESET_PORT &= ~(1<<RELAISPIN);     // LO   
    
    RESET_DDR |= (1<<OSZIPIN);        // Ausgang
    RESET_PORT |= (1<<OSZIPIN);       // HI
@@ -147,11 +148,11 @@ void timer_init(void)
 	/* Set timer to CTC mode */
 	//TCCR0A = (1 << WGM01);
 	/* Set prescaler */
-	TCCR0 = (1 << CS00)|(1 << CS02); // clock/1024
+	TCCR0A = (1 << CS00)|(1 << CS02); // clock/1024
 	/* Set output compare register for 1ms ticks */
 	//OCR0A = (F_CPU / 8) / 1000;
 	/* Enable output compare A interrupts */
-	TIMSK = (1 << TOIE0); // TOV0 Overflow
+	TIMSK0 = (1 << TOIE0); // TOV0 Overflow
    
 }
 
@@ -185,10 +186,10 @@ ISR(INT0_vect) // Potential-Aenderung von Raspi
    {
       // counter zuruecksetzen, alles OK
       resetcount=0;
-      
    }
    
 }
+
 
 /*
 ISR (SPI_STC_vect) // Neue Zahl angekommen
@@ -220,11 +221,15 @@ void WDT_Init(void)
 {
    cli();
    MCUSR &= ~(1<<WDRF);
-   WDTCR = (1<<WDCE) | (1<<WDE) ;
+   WDTCSR = (1<<WDCE) | (1<<WDE) ;
    
    wdt_enable(WDTO_2S);
-   
    sei();
+}
+
+ISR(WDT_vect)
+{
+   PORTB  &= ~(1<<RELAISPIN);
 }
 
 
@@ -242,8 +247,8 @@ void main (void)
    /* initialize the LCD */
    lcd_initialize(LCD_FUNCTION_8x2, LCD_CMD_ENTRY_INC, LCD_CMD_ON);
 
-   MCUCR |= (1<<ISC00); //Any logical change on INT0 generates an interrupt request.
-   GICR |= (1<<INT0);
+   MCUCR |= (1<<ISC10); //Any logical change on INT0 generates an interrupt request.
+   EIMSK |= (1<<INT0);
 //   GIMSK |= (1<<INT0);
    
   //  PCICR |= 1<<PCIE0;
@@ -278,7 +283,19 @@ void main (void)
 #pragma mark while
 	while (1)
    {
-      wdt_reset();
+      if (TEST)
+      {
+         while(!(LOOPLED_PIN & (1<<TESTPIN))) 
+         {
+            _delay_ms(100);      
+         }
+      }
+      else 
+      {
+         wdtcounter=0;
+         wdt_reset();
+      }
+      
       //Blinkanzeige
       loopcount0++;
       if (loopcount0>=0x00AF)
@@ -295,11 +312,7 @@ void main (void)
          }         
       }
       
-      while(!(LOOPLED_PIN & (1<<TESTPIN))) 
-      {
-         _delay_ms(100);      
-      }
-      //continue;
+       //continue;
       //statusflag =0;
       if (statusflag & (1<<CHECK))// Timer gibt Takt der Anfrage an
       {    
@@ -381,9 +394,9 @@ void main (void)
             lcd_putint(DELTA);
             for (i=0;i<3;i++)
             {
-               RESET_PORT &= ~(1<<TASTEPIN);    // TASTEPIN LO, Reset fuer raspi
+               RESET_PORT &= ~(1<<RELAISPIN);    // RELAISPIN LO, Reset fuer raspi
                _delay_ms(300);
-               RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
+               RESET_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
                _delay_ms(300);
             }
             statusflag |= (1<<WAIT);      // WAIT ist gesetzt, Ausgang wird von Raspi_HI nicht sofort wieder zurueckgesetzt
@@ -404,7 +417,7 @@ void main (void)
                // RESET_PORT |=(1<<OSZIPIN);
                // statusflag &= ~0x1B ; // alle reset-Bits (3,4)
                statusflag &= ~0x3B ; 
-               // RESET_PORT &= ~(1<<TASTEPIN); //Ausgang wieder LO
+               // RESET_PORT &= ~(1<<RELAISPIN); //Ausgang wieder LO
                statusflag &= ~(1<<WAIT);// WAIT zurueckgesetzt, Raspi_HI ist wieder wirksam
                statusflag |= (1<<REBOOTWAIT); //  Warten auf Ausschalten
                resetcount =0; 
@@ -426,7 +439,7 @@ void main (void)
                lcd_gotoxy(0,1);
                lcd_puts("shut off");
                
-               RESET_PORT &= ~(1<<TASTEPIN); // Ausschalten einleiten, Relaispin 5s down
+               RESET_PORT &= ~(1<<RELAISPIN); // Ausschalten einleiten, Relaispin 5s down
             }
             
             if (rebootdelaycount == DELTA * (SHUTDOWNFAKTOR + KILLFAKTOR)) // Ausgeschaltet
@@ -434,11 +447,11 @@ void main (void)
                lcd_gotoxy(0,1);
                lcd_puts("restart ");
                
-               RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
+               RESET_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
                _delay_ms(1000); // kurz warten
-               RESET_PORT &= ~(1<<TASTEPIN);    // TASTEPIN LO, Restart fuer raspi
+               RESET_PORT &= ~(1<<RELAISPIN);    // RELAISPIN LO, Restart fuer raspi
                _delay_ms(200);
-               RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
+               RESET_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
                statusflag |= (1<<RESTARTWAIT);
                restartcount=0; // counter fuer Restart-Zeit
                RESET_PORT &= ~(1<<OSZIPIN);
@@ -481,7 +494,7 @@ void main (void)
           webserverresetcount =0;
           delaycount=0;
           statusflag &= ~(1<<WAIT);
-          //           RESET_PORT &= ~(1<<TASTEPIN);
+          //           RESET_PORT &= ~(1<<RELAISPIN);
           }
           else // webserverreset inc, reset wenn Eingang vom Webserver lange genug LO ist: Fehlerfall auf Webserver
           {
@@ -489,7 +502,7 @@ void main (void)
           RESET_PORT ^=(1<<OSZIPIN);
           if (webserverresetcount > RASPIRESETDELAY)
           {
-          RESET_PORT |= (1<<TASTEPIN);    // TASTEPIN Hi, Relais schaltet aus
+          RESET_PORT |= (1<<RELAISPIN);    // RELAISPIN Hi, Relais schaltet aus
           statusflag |= (1<<WAIT);      // WAIT ist gesetzt, Relais wird von Raspi_HI nicht zurueckgesetzt
           
           }
@@ -497,7 +510,7 @@ void main (void)
           if (webserverresetcount > (RASPIRESETDELAY + RESETDELAY))
           {
           //RESET_PORT |=(1<<OSZIPIN);
-          RESET_PORT &= ~(1<<TASTEPIN);
+          RESET_PORT &= ~(1<<RELAISPIN);
           statusflag &= ~(1<<WAIT);// WAIT zurueckgesetzt, Raspi_HI ist wieder wirksam
           webserverresetcount =0;
           resetcount =0;

@@ -40,7 +40,7 @@
 
 
 # MCU name
-MCU = atmega8
+MCU = atmega328
 
 
 # Processor frequency.
