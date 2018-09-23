@@ -24,7 +24,7 @@
 //									*
 //***********************************
 
-#define TEST 1
+#define TEST 0
 #define LOOPLED_PORT PORTB
 #define LOOPLED_DDR  DDRB
 #define LOOPLED_PIN  PINB
@@ -39,8 +39,8 @@
 
 
 #define RASPISUPPLYPIN        1     // Eingang vom Raspi: Betriebsspannung ist ON
+#define RASPITAKTPIN          2      // INT0: periodisches Signal vom shutoff-Process 
 #define RASPISYSTEMPIN        3     // Eingang vom Raspi: HI wenn System ON (LO wenn Raspi ausgeschaltet, aber ev. Betriebspannung noch eingeschaltet ist: direkt Shutoff einleiten 
-#define RASPITAKTPIN			   2		// INT0: periodisches Signal vom shutoff-Process 
 
 #define OSZIPIN               7
 #define REPORTPIN             3       //  Meldet Reset an Webserver, active LO
@@ -110,7 +110,7 @@ void slaveinit(void)
    LOOPLED_DDR |= (1<<LOOPLEDPIN);
    LOOPLED_PORT |= (1<<LOOPLEDPIN);     // HI
 
-   LOOPLED_DDR |= (1<<TESTPIN);
+   LOOPLED_DDR &= ~(1<<TESTPIN);    // Eingang
    LOOPLED_PORT |= (1<<TESTPIN);     // HI
    
    
@@ -274,13 +274,13 @@ void main (void)
    }
    
    
-   WDT_Init();
+  // WDT_Init();
    sei();
    
    lcd_gotoxy(17,0);
    lcd_puts("go");
 
-   _delay_ms(400);
+   //_delay_ms(400);
    
    statusflag |= (1<<FIRSTRUN);
 #pragma mark while
