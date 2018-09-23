@@ -277,7 +277,7 @@ void main (void)
   // WDT_Init();
    sei();
    
-   lcd_gotoxy(17,0);
+   lcd_gotoxy(14,0);
    lcd_puts("go");
 
    //_delay_ms(400);
