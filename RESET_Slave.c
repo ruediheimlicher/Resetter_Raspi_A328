@@ -26,7 +26,9 @@
 
 #define LOOPLED_PORT PORTB
 #define LOOPLED_DDR  DDRB
+#define LOOPLED_PIN  PINB
 #define LOOPLEDPIN            0        // Blink-LED
+#define TESTPIN               1
 
 #define RESET_PORT		PORTD
 #define RESET_PIN		PIND
@@ -103,6 +105,11 @@ void slaveinit(void)
    TCCR0 |= (1<<CS02); // attiny
    
    LOOPLED_DDR |= (1<<LOOPLEDPIN);
+   LOOPLED_PORT |= (1<<LOOPLEDPIN);     // HI
+
+   LOOPLED_DDR |= (1<<TESTPIN);
+   LOOPLED_PORT |= (1<<TESTPIN);     // HI
+   
    
    RESET_DDR |= (1<<TASTEPIN);       // Ausgang: Schaltet Reset-Ausgang fuer Zeit RESETDELAY auf LO
    RESET_PORT |= (1<<TASTEPIN);     // HI	
@@ -118,7 +125,7 @@ void slaveinit(void)
    
    RESET_DDR &= ~(1<<RASPISYSTEMPIN);        // Eingang: Verbunden mit Raspi~-Ausgang: blockiert resetter im FIRSTrun, wenn R noch OFF
    RESET_PORT &= ~(1<<RASPISYSTEMPIN);
-  
+   
    
    RESET_DDR &= ~(1<<PB2);
    
@@ -129,7 +136,7 @@ void slaveinit(void)
    LCD_DDR |= (1<<LCD_CLOCK_PIN);   //Pin 6 von PORT B als Ausgang fuer LCD
    
    
- }
+}
 
 
 
@@ -209,6 +216,20 @@ ISR (SPI_STC_vect) // Neue Zahl angekommen
 }
 */
 
+void WDT_Init(void)
+{
+   cli();
+   MCUSR &= ~(1<<WDRF);
+   WDTCR = (1<<WDCE) | (1<<WDE) ;
+   
+   wdt_enable(WDTO_2S);
+   
+   sei();
+}
+
+
+
+
 
 void main (void) 
 {
@@ -216,9 +237,6 @@ void main (void)
    wdt_disable();
 	MCUSR &= ~(1<<WDRF);
 // *** 	wdt_reset();
-	WDTCR |= (1<<WDCE) | (1<<WDE);
-	WDTCR = 0x00;
-//   WDTCR |= (1 << WDP3) | (1 << WDP0); // timer goes off every 8 seconds
 	slaveinit();
    
    /* initialize the LCD */
@@ -234,10 +252,27 @@ void main (void)
  //   PCMSK0 |= 1<<PCINT2;
    //PCMSK |= 1<<PCINT2; // attiny
    timer_init();
-   sei();
    
    lcd_gotoxy(0,0);
    lcd_puts("Raspi-Resetter");
+
+   uint8_t i=0;
+   for (i=0;i<3;i++)
+   {
+      LOOPLED_PORT &=~(1<<LOOPLEDPIN);
+      _delay_ms(200);
+      LOOPLED_PORT |=(1<<LOOPLEDPIN);
+      _delay_ms(200);
+   }
+   
+   
+   WDT_Init();
+   sei();
+   
+   lcd_gotoxy(17,0);
+   lcd_puts("go");
+
+   _delay_ms(400);
    
    statusflag |= (1<<FIRSTRUN);
 #pragma mark while
@@ -258,6 +293,11 @@ void main (void)
             //RESET_PORT ^=(1<<LOOPLEDPIN);
             loopcount1=0;
          }         
+      }
+      
+      while(!(LOOPLED_PIN & (1<<TESTPIN))) 
+      {
+         _delay_ms(100);      
       }
       //continue;
       //statusflag =0;
