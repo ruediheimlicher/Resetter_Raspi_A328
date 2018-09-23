@@ -24,6 +24,7 @@
 //									*
 //***********************************
 
+#define TEST 1
 #define LOOPLED_PORT PORTB
 #define LOOPLED_DDR  DDRB
 #define LOOPLED_PIN  PINB
@@ -99,6 +100,8 @@ volatile uint16_t	restartcount=0; // counter fuer Restart-Zeit
 
 volatile uint16_t   firstruncount=0; // warten auf Raspi bei plugin
 
+volatile uint8_t   wdtcounter=0;
+
 void slaveinit(void)
 {
    
@@ -111,8 +114,8 @@ void slaveinit(void)
    LOOPLED_PORT |= (1<<TESTPIN);     // HI
    
    
-   RESET_DDR |= (1<<RELAISPIN);       // Ausgang: Schaltet Reset-Ausgang fuer Zeit RESETDELAY auf LO
-   RESET_PORT |= (1<<RELAISPIN);     // HI	
+   RESET_DDR |= (1<<TASTEPIN);       // Ausgang: Schaltet Reset-Ausgang fuer Zeit RESETDELAY auf LO
+   RESET_PORT |= (1<<TASTEPIN);     // HI	
    //RESET_PORT &= ~(1<<RELAISPIN);     // LO   
    
    RESET_DDR |= (1<<OSZIPIN);        // Ausgang
@@ -229,7 +232,7 @@ void WDT_Init(void)
 
 ISR(WDT_vect)
 {
-   PORTB  &= ~(1<<RELAISPIN);
+   PORTB  &= ~(1<<TASTEPIN);
 }
 
 
@@ -394,9 +397,9 @@ void main (void)
             lcd_putint(DELTA);
             for (i=0;i<3;i++)
             {
-               RESET_PORT &= ~(1<<RELAISPIN);    // RELAISPIN LO, Reset fuer raspi
+               RESET_PORT &= ~(1<<TASTEPIN);    // RELAISPIN LO, Reset fuer raspi
                _delay_ms(300);
-               RESET_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
+               RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
                _delay_ms(300);
             }
             statusflag |= (1<<WAIT);      // WAIT ist gesetzt, Ausgang wird von Raspi_HI nicht sofort wieder zurueckgesetzt
@@ -439,7 +442,7 @@ void main (void)
                lcd_gotoxy(0,1);
                lcd_puts("shut off");
                
-               RESET_PORT &= ~(1<<RELAISPIN); // Ausschalten einleiten, Relaispin 5s down
+               RESET_PORT &= ~(1<<TASTEPIN); // Ausschalten einleiten, Relaispin 5s down
             }
             
             if (rebootdelaycount == DELTA * (SHUTDOWNFAKTOR + KILLFAKTOR)) // Ausgeschaltet
@@ -447,11 +450,11 @@ void main (void)
                lcd_gotoxy(0,1);
                lcd_puts("restart ");
                
-               RESET_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
+               RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
                _delay_ms(1000); // kurz warten
-               RESET_PORT &= ~(1<<RELAISPIN);    // RELAISPIN LO, Restart fuer raspi
+               RESET_PORT &= ~(1<<TASTEPIN);    // RELAISPIN LO, Restart fuer raspi
                _delay_ms(200);
-               RESET_PORT |= (1<<RELAISPIN); //Ausgang wieder HI
+               RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
                statusflag |= (1<<RESTARTWAIT);
                restartcount=0; // counter fuer Restart-Zeit
                RESET_PORT &= ~(1<<OSZIPIN);
