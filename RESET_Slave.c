@@ -182,7 +182,7 @@ ISR(PCINT0_vect) // Potential-Aenderung
 
 }
 */
-ISR(INT0_vect) // Potential-Aenderung von Raspi
+ISR(INT0_vect) // Potential-Aenderung von Raspi-Takt
 {
    //RESET_PORT ^=(1<<OSZIPIN);
    statusflag &= ~(1<<FIRSTRUN); // Flag resetten, Raspi ist gestartet
@@ -268,16 +268,17 @@ void main (void)
    for (i=0;i<3;i++)
    {
       LOOPLED_PORT &=~(1<<LOOPLEDPIN);
-      _delay_ms(200);
+      _delay_ms(600);
       LOOPLED_PORT |=(1<<LOOPLEDPIN);
-      _delay_ms(200);
+      _delay_ms(50);
+      wdt_reset();
    }
    
    
-  // WDT_Init();
+   WDT_Init();
    sei();
    
-   lcd_gotoxy(14,0);
+   lcd_gotoxy(15,0);
    lcd_puts("go");
 
    //_delay_ms(400);
@@ -384,7 +385,7 @@ void main (void)
          lcd_gotoxy(12,3);
          lcd_putint12(restartcount);
          
-         
+         wdt_reset();
          if ((resetcount > RESETFAKTOR * DELTA) && (!(statusflag & (1<<WAIT)))   && (!(statusflag & (1<<REBOOTWAIT))))     // Zeit erreicht, kein wait-status, kein reboot-status: Reboot-vorgang nicht unterbrechen 
          {
             //RESET_PORT ^=(1<<OSZIPIN);
@@ -401,6 +402,7 @@ void main (void)
                _delay_ms(300);
                RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
                _delay_ms(300);
+               wdt_reset();
             }
             statusflag |= (1<<WAIT);      // WAIT ist gesetzt, Ausgang wird von Raspi_HI nicht sofort wieder zurueckgesetzt
             delaycount = 0;
@@ -452,8 +454,10 @@ void main (void)
                
                RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
                _delay_ms(1000); // kurz warten
+               wdt_reset();
                RESET_PORT &= ~(1<<TASTEPIN);    // RELAISPIN LO, Restart fuer raspi
                _delay_ms(200);
+               wdt_reset();
                RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
                statusflag |= (1<<RESTARTWAIT);
                restartcount=0; // counter fuer Restart-Zeit
