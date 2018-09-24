@@ -24,7 +24,7 @@
 //									*
 //***********************************
 
-#define TEST 1
+#define TEST 0
 #define LOOPLED_PORT PORTB
 #define LOOPLED_DDR  DDRB
 #define LOOPLED_PIN  PINB
