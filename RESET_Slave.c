@@ -133,7 +133,7 @@ void slaveinit(void)
    RESET_DDR &= ~(1<<RASPISUPPLYPIN);        // Eingang: Verbunden mit Raspi~-Betriebspannung: blockiert resetter im FIRSTrun, wenn R noch OFF
    RESET_PORT &= ~(1<<RASPISUPPLYPIN);        // LO
    
-   RESET_DDR &= ~(1<<RASPISYSTEMPIN);        // Eingang: Verbunden mit Raspi~-Ausgang: blockiert resetter im FIRSTrun, wenn R noch OFF
+   RESET_DDR &= ~(1<<RASPISYSTEMPIN);        // Eingang: Verbunden mit Raspi-Systemausgang: HI wenn System run
    RESET_PORT &= ~(1<<RASPISYSTEMPIN);
    
    
@@ -371,7 +371,7 @@ void main (void)
       if (statusflag & (1<<CHECK))// Timer gibt Takt der Anfrage an
       {    
          lcd_gotoxy(18,0);
-         lcd_puthex(statusflag);
+         //lcd_puthex(statusflag);
          lcd_gotoxy(6,1);
          lcd_puthex(wdt_isr_counter);
          if (statusflag & (1<<FIRSTRUN))  //  Beim Start warten auf Takt vom Raspi (anstatt:Betriebsspannung)
@@ -436,30 +436,45 @@ void main (void)
          
          lcd_gotoxy(12,3);
          lcd_putint12(restartcount);
-         
+         if ((RESET_PIN & (1<<RASPISYSTEMPIN))) // System ist ON
+            
+         {
+            lcd_gotoxy(0,3);
+            lcd_puts("Sys ON");
+         }
+         else
+         {
+            lcd_gotoxy(0,3);
+            lcd_puthex(RESET_PIN);
+            lcd_puts("Sys OFF");
+         }
+
  //        wdt_reset();
          if ((resetcount > RESETFAKTOR * DELTA) && (!(statusflag & (1<<WAIT)))   && (!(statusflag & (1<<REBOOTWAIT))))     // Zeit erreicht, kein wait-status, kein reboot-status: Reboot-vorgang nicht unterbrechen 
          {
-            //RESET_PORT ^=(1<<OSZIPIN);
-            // 3 Impuldse zum Abschalten
-            uint8_t i = 0;
-            lcd_gotoxy(0,2);
-            lcd_puts("3 Imp");
-            lcd_putint(RESETFAKTOR);
-            lcd_putc(' ');
-            lcd_putint(DELTA);
-            for (i=0;i<3;i++)
-            {
-               RESET_PORT &= ~(1<<TASTEPIN);    // RELAISPIN LO, Reset fuer raspi
-               _delay_ms(300);
-               RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
-               _delay_ms(300);
-               wdt_reset();
-            }
-            statusflag |= (1<<WAIT);      // WAIT ist gesetzt, Ausgang wird von Raspi_HI nicht sofort wieder zurueckgesetzt
-            delaycount = 0;
             
+            //RESET_PORT ^=(1<<OSZIPIN);
+             {
+               // 3 Impuldse zum Abschalten
+               uint8_t i = 0;
+               lcd_gotoxy(0,2);
+               lcd_puts("3 Imp");
+               lcd_putint(RESETFAKTOR);
+               lcd_putc(' ');
+               lcd_putint(DELTA);
+               for (i=0;i<3;i++)
+               {
+                  RESET_PORT &= ~(1<<TASTEPIN);    // RELAISPIN LO, Reset fuer raspi
+                  _delay_ms(300);
+                  RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
+                  _delay_ms(300);
+                  wdt_reset();
+               }
+               statusflag |= (1<<WAIT);      // WAIT ist gesetzt, Ausgang wird von Raspi_HI nicht sofort wieder zurueckgesetzt
+               delaycount = 0;
+            }
          }
+         
          
          if (statusflag & (1<<WAIT))
          {
