@@ -34,19 +34,14 @@
 #define TESTPIN               2
 
 #define RESET_PORT		PORTD
-#define RESET_PIN		PIND
-#define RESET_DDR		DDRD
-
-
-
+#define RESET_PIN		   PIND
+#define RESET_DDR		   DDRD
 
 #define RASPISUPPLYPIN        1     // Eingang vom Raspi: Betriebsspannung ist ON
 #define RASPITAKTPIN          2      // INT0: periodisches Signal vom shutoff-Process 
 #define RASPISYSTEMPIN        3     // Eingang vom Raspi: HI wenn System ON (LO wenn Raspi ausgeschaltet, aber ev. Betriebspannung noch eingeschaltet ist: direkt Shutoff einleiten 
-
 #define OSZIPIN               7
 #define REPORTPIN             3       //  Meldet Reset an Webserver, active LO
-
 #define TASTEPIN              4        // Schaltet Relais
 
 
@@ -122,6 +117,8 @@ void slaveinit(void)
    
    RESET_DDR |= (1<<TASTEPIN);       // Ausgang: Schaltet Reset-Ausgang fuer Zeit RESETDELAY auf LO
    RESET_PORT |= (1<<TASTEPIN);     // HI	
+   //RESET_PORT &= ~(1<<TASTEPIN);
+   
    //RESET_PORT &= ~(1<<RELAISPIN);     // LO   
    
    RESET_DDR |= (1<<OSZIPIN);        // Ausgang
