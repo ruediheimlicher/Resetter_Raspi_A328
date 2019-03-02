@@ -264,8 +264,6 @@ ISR(WDT_vect)
    WDTCSR   =   (1<<WDCE)|(1<<WDE ); // next WDR ohne WDIE, -> reset
  }
 
-
-
 void main (void) 
 {
    cli();
