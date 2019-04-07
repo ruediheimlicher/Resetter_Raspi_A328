@@ -185,6 +185,7 @@ ISR(PCINT0_vect) // Potential-Aenderung
 
 }
 */
+
 ISR(INT0_vect) // Potential-Aenderung von Raspi-Takt
 {
    
@@ -312,7 +313,6 @@ void main (void)
 #pragma mark while
 	while (1)
    {
-      
       if (TEST)
       {
          uint8_t i=0;
@@ -326,7 +326,6 @@ void main (void)
                wdt_rep_counter++;
                lcd_gotoxy(0,1);
                lcd_puthex(wdt_rep_counter);
-               
             }
             //RESET_PORT |=(1<<TASTEPIN);
             _delay_ms(100); 
@@ -334,7 +333,6 @@ void main (void)
             //lcd_puthex(wdt_isr_counter);
          }
          wdt_rep_counter=0;
-         
       }
       else 
       {
@@ -504,7 +502,7 @@ void main (void)
             if (rebootdelaycount == DELTA * SHUTDOWNFAKTOR) // Raspi ist down
             {
                lcd_gotoxy(0,1);
-               lcd_puts("shut off");
+               lcd_puts("shut_off");
                
                RESET_PORT &= ~(1<<TASTEPIN); // Ausschalten einleiten, Relaispin 5s down
             }
