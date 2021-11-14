@@ -69,6 +69,8 @@
 #define FIRSTRUN              6 // Warten auf Raspi
 #define CHECK                 7 // in ISR gesetzt, resetcount soll erhoeht werden
 
+#define FIRSTRUNTIME          10 // Zeit  bis Startimpuls für Raspi nach Power off
+
 
 #define Raspi_LO_MAX            0x8000
 #define Raspi_HI_MAX            0xFFFF
@@ -169,6 +171,22 @@ ISR(TIMER0_OVF_vect) // Aenderung an SDA
    statusflag |= (1<<CHECK);
    LOOPLED_PORT ^=(1<<LOOPLEDPIN);
    //RESET_PORT ^= (1<<OSZIPIN);
+   if (statusflag & (1<<FIRSTRUN)) // warten bis Raspi start
+   {
+      firstruncount++;
+      if (firstruncount > FIRSTRUNTIME)
+      {
+         statusflag &= ~(1<<FIRSTRUN);
+         RESET_PORT |= (1<<TASTEPIN); //Ausgang sicher wieder HI
+         _delay_ms(1000); // kurz warten
+         RESET_PORT &= ~(1<<TASTEPIN);    // RELAISPIN LO, Start fuer raspi
+         _delay_ms(100);
+         RESET_PORT |= (1<<TASTEPIN);     //Ausgang wieder HI
+         firstruncount = 0;
+         
+      }
+   }
+
 }
 
 /*
@@ -455,10 +473,12 @@ void main (void)
                lcd_putint(RESETFAKTOR);
                lcd_putc(' ');
                lcd_putint(DELTA);
+                wdt_reset();
                for (i=0;i<3;i++)
                {
                   RESET_PORT &= ~(1<<TASTEPIN);    // RELAISPIN LO, Reset fuer raspi
                   _delay_ms(300);
+                  wdt_reset();
                   RESET_PORT |= (1<<TASTEPIN); //Ausgang wieder HI
                   _delay_ms(300);
                   wdt_reset();
@@ -474,9 +494,9 @@ void main (void)
             lcd_gotoxy(0,1);
             lcd_puts("wait");
             
-            delaycount++; // Counter fuer Warten bis Raspi-shutdown, anschliessend ausschalten: Relasipin low fuer 5 sec 
+            delaycount++; // Counter fuer Warten bis Raspi-shutdown, anschliessend ausschalten: Relaispin low fuer 5 sec 
             //RESET_PORT ^=(1<<OSZIPIN);
-            if (delaycount > RESETDELAY) //Raspi ist down
+            if (delaycount > RESETDELAY) //Raspi ist jetzt down
             {
                
                // RESET_PORT |=(1<<OSZIPIN);
